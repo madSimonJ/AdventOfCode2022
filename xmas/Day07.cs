@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Security;
-using System.Text;
-using System.Threading.Tasks;
-using static xmas.Day07;
+﻿using static xmas.Day07;
 
 namespace xmas
 {
@@ -72,7 +65,7 @@ namespace xmas
             public IDictionary<string, (int, IEnumerable<string>)> Directories { get; set; }
         }
 
-        private static LsCommand ParseLsCommand(string input) => input.Split("\r\n")
+        private static LsCommand ParseLsCommand(string input) => input.Split("\n")
                                                                         .Where(x => !string.IsNullOrWhiteSpace(x))
                                                                         .Skip(1)
                                                                         .Select(x => 
@@ -93,7 +86,7 @@ namespace xmas
                     return x[..3].Trim() switch
                     {
                         "ls" => ParseLsCommand(x) as Command,
-                        "cd" => ParseCdCommand(x[3..].Replace("\r\n", "")) as Command,
+                        "cd" => ParseCdCommand(x[3..].Trim()) as Command,
                         _ => throw new NotImplementedException()
                     };
                 });
@@ -104,27 +97,44 @@ namespace xmas
                         Directories = new Dictionary<string, (int, IEnumerable<string>)>(),
                         DirectoryStack = Enumerable.Empty<string>()
                     },
-                    (agg, x) => (comm: x, Curr: agg.DirectoryStack.LastOrDefault() ?? "") switch
+                    (agg, x) => (comm: x, Curr: string.Join("/", agg.DirectoryStack)) switch
                     {
-                        { comm: CdCommand up } when up.Directory == ".." => agg with { DirectoryStack = agg.DirectoryStack.ToArray()[..1] },
+                        { comm: CdCommand { Directory: ".." } } => agg with { DirectoryStack = agg.DirectoryStack.Take(agg.DirectoryStack.Count() - 1)},
                         { comm: CdCommand down } => agg with { DirectoryStack = agg.DirectoryStack.Append(down.Directory) },
                         { comm: LsCommand ls, Curr: var c } => agg with { Directories = agg.Directories.UpdateDirectoryDictionary(c, ls.Contents) }
                     }
                 );
 
         public static int GetDirectorySize(string dirName, IDictionary<string, (int, IEnumerable<string>)> fileSystem) =>
-            fileSystem[dirName].Item1 + fileSystem[dirName].Item2.Sum(x => GetDirectorySize(x, fileSystem));
+            fileSystem[dirName].Item1 + fileSystem[dirName].Item2.Sum(x => GetDirectorySize(  dirName + "/" + x, fileSystem));
 
 
         private static IEnumerable<(string, int)> GetSmallDirectories(IDictionary<string, (int, IEnumerable<string>)> fileSystem) =>
-            fileSystem.Select(x => (x.Key, GetDirectorySize(x.Key, fileSystem)))
-                        .Where(x => x.Key != "/");
-                        //.Where(x => x.Item2 <= 100000);
+            fileSystem.Where(x => x.Key != "/").Select(x => (x.Key, GetDirectorySize(x.Key, fileSystem)))
+                        .Where(x => x.Key != "/")
+                        .Where(x => x.Item2 <= 100000);
+
+        private static IEnumerable<(string, int)> GetLargerDirectories(IDictionary<string, (int, IEnumerable<string>)> fileSystem) =>
+            fileSystem.Where(x => x.Key != "/").Select(x => (x.Key, GetDirectorySize(x.Key, fileSystem)))
+                .Where(x => x.Key != "/")
+                .Where(x => x.Item2 >= 8381165);
+
+        private static int GetSumOfSmallerDirectories(string input) =>
+            input.Bind(ParseCommands)
+                .Bind(ScanFileSystem)
+                .Bind(x => GetSmallDirectories(x.Directories))
+                .Sum(x => x.Item2);
+
+        private static int GetSmallestDirectoryToDelete(string input) =>
+            input.Bind(ParseCommands)
+                .Bind(ScanFileSystem)
+                .Bind(x => GetLargerDirectories(x.Directories))
+                .Min(x => x.Item2);
 
         [Fact]
         public void Test01()
         {
-            var input = @"$ cd /
+            const string input = @"$ cd /
 $ ls
 dir a
 14848514 b.txt
@@ -182,7 +192,7 @@ $ ls
         [Fact]
         public void Test02()
         {
-            var input = @"$ cd /
+            const string input = @"$ cd /
 $ ls
 dir a
 14848514 b.txt
@@ -216,10 +226,48 @@ $ ls
         public void Day07_PartA()
         {
             var input = File.ReadAllText("./Day07.txt");
-            var parsedCommands = ParseCommands(input);
-            var fileSystem = ScanFileSystem(parsedCommands);
-            var ld = GetSmallDirectories(fileSystem.Directories);
-            ld.Sum(x => x.Item2).Should().BeGreaterThan(853284);
+            var result = GetSumOfSmallerDirectories(input);
+            result.Should().Be(1667443);
+        }
+
+        [Fact]
+        public void Test03()
+        {
+            const string input = @"$ cd /
+$ ls
+dir a
+14848514 b.txt
+8504156 c.dat
+dir d
+$ cd a
+$ ls
+dir e
+29116 f
+2557 g
+62596 h.lst
+$ cd e
+$ ls
+584 i
+$ cd ..
+$ cd ..
+$ cd d
+$ ls
+4060174 j
+8033020 d.log
+5626152 d.ext
+7214296 k";
+
+            var result = GetSmallestDirectoryToDelete(input);
+            result.Should().Be(8998590);
+        }
+
+
+        [Fact]
+        public void Day07_PartB()
+        {
+            var input = File.ReadAllText("./Day07.txt");
+            var result = GetSmallestDirectoryToDelete(input);
+            result.Should().Be(1667443);
         }
 
     }
