@@ -22,7 +22,7 @@ namespace xmas
 
             public IEnumerable<int> GetAllEast(int x, int y) => Enumerable.Range(x + 1, this.Trees.Length - (x + 1)).Select(x1 => GetTree(x1, y));
 
-            public IEnumerable<int> GetAllWest(int x, int y) => Enumerable.Range(0, x).Select((x1 => GetTree(x1, y))).Reverse();
+            public IEnumerable<int> GetAllWest(int x, int y) => Enumerable.Range(0, x).Select(x1 => GetTree(x1, y)).Reverse();
 
             public bool IsPerimeter(int x, int y) => x == 0 || y == 0 || x == this.Trees.Length - 1 || y == this.Trees.Length - 1;
 
@@ -58,7 +58,7 @@ namespace xmas
                 .Bind(t =>
                     t.Select((x, i) => (Tree: x, Count: i + 1))
                         .FirstOrDefault(x => x.Tree >= currentTreeHeight).Count
-                        .Bind(x => x == 0 ? t.Count() : x)
+                        .Bind(x => x == 0 ? t.Length : x)
                     );
 
         public static int CalculateScenicScore(TreeGrid tg, int x, int y) =>

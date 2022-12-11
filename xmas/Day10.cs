@@ -40,7 +40,7 @@ namespace xmas
 
         public static string RenderSpriteString(IEnumerable<int> input) =>
                 input.Zip(Enumerable.Range(0, 40))
-                .Select(x => Math.Abs(x.First - x.Second) < 2 ? '#' : '.')
+                .Select(x => Math.Abs(x.Item1 - x.Item2) < 2 ? '#' : '.')
                 .Bind(x => new string(x.ToArray()));
 
         public static string RenderAllInstructionsToStrings(IEnumerable<int> input) =>
