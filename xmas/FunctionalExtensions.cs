@@ -1,4 +1,6 @@
-﻿namespace xmas
+﻿using System.Diagnostics;
+
+namespace xmas
 {
     public static class FunctionalExtensions
     {
@@ -12,6 +14,17 @@
         {
             a(@this);
             return @this;
+        }
+
+        public static T IterateUntil<T>(this T @this, Func<T, bool> cond, Func<T, T> f)
+        {
+            var updated = @this;
+            while (!cond(updated))
+            {
+                updated = f(updated);
+            }
+
+            return updated;
         }
     }
 }
